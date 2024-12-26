@@ -57,8 +57,9 @@ class PID:
         self._input_time = None
         self._last_input = None
         self._last_input_time = None
+        self._last_error = 0
         self._error = 0
-        self._input_diff = 0
+        self._error_diff = 0
         self._dext = 0
         self._dt = 0
         self._last_output = 0
@@ -147,6 +148,7 @@ class PID:
         self._input_time = None
         self._last_input = None
         self._last_input_time = None
+        self._last_error = 0
         
     def calc(self, input_val, set_point, input_time=None, last_input_time=None, ext_temp=None):
         """Adjusts and holds the given setpoint.
@@ -186,11 +188,10 @@ class PID:
             return self._output, False
 
         # Compute all the working error variables
-        self._error = set_point - input_val
-        if self._last_input is not None:
-            self._input_diff = self._input - self._last_input
-        else:
-            self._input_diff = 0
+        self._last_error = self._error
+        self._error = set_point - self._input
+        self._error_diff = self._error - self._last_error
+
         if self._last_input_time is not None:
             self._dt = self._input_time - self._last_input_time
         else:
@@ -203,19 +204,19 @@ class PID:
         # Compensate losses due to external temperature
         self._external = self._Ke * self._dext
 
-        # In order to prevent windup, only integrate if the process is not saturated and set point
-        # is stable
-        if self._out_min < self._last_output < self._out_max and \
-                self._last_set_point == self._set_point:
-            self._integral += self._Ki * self._error * self._dt
-            # Take external temperature compensation into account for integral clamping
-            self._integral = max(min(self._integral, self._out_max - self._external), self._out_min - self._external)
-        if ext_temp is not None and self._last_set_point != self._set_point:
-            self._integral = 0  # Reset integral if set point has changed as system will need to converge to a new value
+        # Only integrate if the set point has not changed
+        if self._last_set_point != self._set_point:
+            self._integral = 0
+        else:
+            # In order to prevent windup, only integrate if the process is not saturated
+            if self._out_min < self._last_output < self._out_max:
+                self._integral += self._Ki * self._error * self._dt
+                # # Take external temperature compensation into account for integral clamping
+                # self._integral = max(min(self._integral, self._out_max - self._external), self._out_min - self._external)
 
         self._proportional = self._Kp * self._error
         if self._dt != 0:
-            self._derivative = -(self._Kd * self._input_diff) / self._dt
+            self._derivative = (self._Kd * self._error_diff) / self._dt
         else:
             self._derivative = 0.0
 
