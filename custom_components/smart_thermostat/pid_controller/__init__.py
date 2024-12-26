@@ -208,11 +208,10 @@ class PID:
         if self._last_set_point != self._set_point:
             self._integral = 0
         else:
-            # In order to prevent windup, only integrate if the process is not saturated
-            if self._out_min < self._last_output < self._out_max:
-                self._integral += self._Ki * self._error * self._dt
-                # # Take external temperature compensation into account for integral clamping
-                # self._integral = max(min(self._integral, self._out_max - self._external), self._out_min - self._external)
+            next_integral = self._integral + self._Ki * self._error * self._dt
+            # Prevent windup
+            if next_integral >= -60 and next_integral <= 60:
+                self._integral = next_integral
 
         self._proportional = self._Kp * self._error
         if self._dt != 0:
