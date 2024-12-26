@@ -182,17 +182,8 @@ class PID:
         self._last_set_point = self._set_point
         self._set_point = set_point
 
-        if self.mode == 'OFF':  # If PID is off, simply switch between min and max output
-            if input_val <= set_point - self._cold_tolerance:
-                self._output = self._out_max
-                _LOGGER.debug("PID is off and input lower than set point: heater ON")
-                return self._output, True
-            elif input_val >= set_point + self._hot_tolerance:
-                self._output = self._out_min
-                _LOGGER.debug("PID is off and input higher than set point: heater OFF")
-                return self._output, True
-            else:
-                return self._output, False
+        if self.mode == 'OFF':  # If PID is off do nothing
+            return self._output, False
 
         # Compute all the working error variables
         self._error = set_point - input_val
