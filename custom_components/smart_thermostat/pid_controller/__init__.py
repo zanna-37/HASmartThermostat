@@ -205,23 +205,28 @@ class PID:
         self._external = self._Ke * self._dext
 
         # Only integrate if the set point has not changed
+        prev_integral = None
         if self._last_set_point != self._set_point:
             self._integral = 0
         else:
-            next_integral = self._integral + self._Ki * self._error * self._dt
-            # Prevent windup
-            if next_integral >= -60 and next_integral <= 60:
-                self._integral = next_integral
+            prev_integral = self._integral
+            self._integral = self._integral + self._Ki * self._error * self._dt
 
         self._proportional = self._Kp * self._error
         if self._dt != 0:
             self._derivative = (self._Kd * self._error_diff) / self._dt
         else:
-            self._derivative = 0.0
+            self._derivative = 0
 
         # Compute PID Output
         output = self._proportional + self._integral + self._derivative + self._external
         self._output = max(min(output, self._out_max), self._out_min)
+
+        # Prevent windup
+        if self._output == self._out_max or self._output == self._out_min:
+            if prev_integral is not None:
+                self._integral = prev_integral
+
         return self._output, True
 
 
